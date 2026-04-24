@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sedano's Product Database</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ED1C24;
+    --red-dark: #c4161d;
+    --black: #111010;
+    --panel: #1a1919;
+    --panel2: #242222;
+    --border: #2e2b2b;
+    --yellow: #FFF45F;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --text: #e8e4e0;
+    --muted: #7a7470;
+    --miami: #3b82f6;
+    --orlando: #22c55e;
+    --all: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-s {
+    background: var(--red);
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    width: 30px; height: 30px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+  .logo-text span { color: var(--muted); font-weight: 400; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .db-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--panel2);
+  }
+  .db-status.loaded { border-color: var(--green); color: var(--green); }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 14px 14px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .table-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    transition: background 0.1s;
+  }
+  .table-item:hover { background: var(--panel2); }
+  .table-item.active { background: var(--red); color: white; }
+  .table-icon {
+    font-size: 11px;
+    opacity: 0.6;
+  }
+  .col-item {
+    padding: 4px 8px 4px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  .col-type {
+    color: var(--yellow);
+    opacity: 0.6;
+    font-size: 10px;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .stat-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--yellow);
+    line-height: 1;
+  }
+  .stat-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* DB ACTIONS */
+  .btn-action {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+  .btn-action:hover { border-color: var(--red); color: var(--red); }
+  .btn-action.primary { background: var(--red); border-color: var(--red); color: white; }
+  .btn-action.primary:hover { background: var(--red-dark); }
+
+  /* CONTENT */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* QUERY EDITOR */
+  .query-area {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+  .query-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .query-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+  .query-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .btn-run {
+    padding: 5px 14px;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-run:hover { background: var(--red-dark); }
+  .btn-snippet {
+    padding: 5px 10px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-snippet:hover { border-color: var(--yellow); color: var(--yellow); }
+  textarea#queryInput {
+    width: 100%;
+    height: 80px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    resize: none;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.15s;
+  }
+  textarea#queryInput:focus { border-color: var(--red); }
+
+  /* QUICK SEARCH */
+  .quick-search {
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .quick-search input {
+    flex: 1;
+    padding: 6px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .quick-search input:focus { border-color: var(--red); }
+  .quick-search input::placeholder { color: var(--muted); }
+  .qs-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  /* RESULTS */
+  .results-wrap {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+  .results-info {
+    padding: 8px 16px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .results-count { color: var(--yellow); font-weight: 600; }
+  .export-btn {
+    padding: 3px 10px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .export-btn:hover { border-color: var(--green); color: var(--green); }
+
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.results thead th {
+    background: var(--panel);
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  table.results thead th:hover { color: var(--text); }
+  table.results tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.08s;
+  }
+  table.results tbody tr:hover { background: var(--panel2); }
+  table.results td {
+    padding: 9px 14px;
+    vertical-align: middle;
+    color: var(--text);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  table.results td.td-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  table.results td.td-upc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #93c5fd;
+  }
+  .loc-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .loc-miami { background: rgba(59,130,246,0.15); color: var(--miami); }
+  .loc-orlando { background: rgba(34,197,94,0.15); color: var(--orlando); }
+  .loc-all { background: rgba(245,158,11,0.15); color: var(--all); }
+  .link-cell a {
+    color: var(--red);
+    text-decoration: none;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .link-cell a:hover { text-decoration: underline; }
+  .no-link { color: var(--muted); font-size: 11px; font-style: italic; }
+
+  .error-msg {
+    padding: 16px;
+    color: var(--red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(237,28,36,0.08);
+    border: 1px solid rgba(237,28,36,0.2);
+    border-radius: 5px;
+    margin: 16px;
+  }
+
+  /* LOAD SCREEN */
+  #loadScreen {
+    position: absolute;
+    inset: 0;
+    background: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    flex-direction: column;
+    gap: 20px;
+  }
+  #loadScreen.hidden { display: none; }
+  .load-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    max-width: 360px;
+    width: 90%;
+  }
+  .load-box .logo-s { margin: 0 auto 16px; width: 48px; height: 48px; font-size: 24px; border-radius: 10px; }
+  .load-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .load-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .btn-load {
+    width: 100%;
+    padding: 12px;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-load:hover { background: var(--red-dark); }
+  #dbFileInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- LOAD SCREEN -->
+<div id="loadScreen">
+  <div class="load-box">
+    <div class="logo-s">S</div>
+    <div class="load-title">Product Database</div>
+    <div class="load-sub">Load your <code style="color:var(--yellow);font-size:12px;">flyer_products.db</code> file to get started. Keep both files together.</div>
+    <input type="file" id="dbFileInput" accept=".db,.sqlite" onchange="loadDB(this)">
+    <button class="btn-load" onclick="document.getElementById('dbFileInput').click()">&#128193; Load Database File</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-s">S</div>
+    <div class="logo-text">Sedano's <span>/ Product DB</span></div>
+  </div>
+  <div class="header-right">
+    <div class="db-status" id="dbStatus">No DB loaded</div>
+    <input type="file" id="reloadInput" accept=".db,.sqlite" style="display:none" onchange="loadDB(this)">
+    <button class="btn-snippet" onclick="document.getElementById('reloadInput').click()" style="font-size:11px;">&#128257; Reload DB</button>
+    <button class="btn-snippet" onclick="exportDB()" style="font-size:11px;border-color:#22c55e;color:#22c55e;">&#8595; Save DB</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tables</div>
+      <div class="table-item active" onclick="selectTable('products')">
+        <span class="table-icon">&#9646;</span> products
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Columns</div>
+      <div class="col-item">id <span class="col-type">INT</span></div>
+      <div class="col-item">flyer <span class="col-type">TEXT</span></div>
+      <div class="col-item">flyer_date <span class="col-type">TEXT</span></div>
+      <div class="col-item">location <span class="col-type">TEXT</span></div>
+      <div class="col-item">product_name <span class="col-type">TEXT</span></div>
+      <div class="col-item">upc <span class="col-type">TEXT</span></div>
+      <div class="col-item">link <span class="col-type">TEXT</span></div>
+      <div class="col-item">created_at <span class="col-type">TEXT</span></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Stats</div>
+      <div class="stat-grid" id="statsGrid">
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">Flyers</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">No Link</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-lbl">Locations</div></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quick Queries</div>
+      <button class="btn-action" onclick="setQuery('SELECT * FROM products ORDER BY flyer_date DESC, flyer')">&#128203; All Products</button>
+      <button class="btn-action" onclick="setQuery(`SELECT * FROM products\nWHERE location = 'MIAMI'\nORDER BY flyer_date DESC`)">&#128197; Miami Only</button>
+      <button class="btn-action" onclick="setQuery(`SELECT * FROM products\nWHERE location = 'ORLANDO'\nORDER BY flyer_date DESC`)">&#128197; Orlando Only</button>
+      <button class="btn-action" onclick="setQuery(`SELECT * FROM products\nWHERE link = '' OR link IS NULL`)">&#9888;&#65039; Missing Links</button>
+      <button class="btn-action" onclick="setQuery(`SELECT flyer, COUNT(*) as count\nFROM products\nGROUP BY flyer\nORDER BY flyer_date DESC`)">&#128200; Count by Flyer</button>
+      <button class="btn-action" onclick="setQuery(`SELECT location, COUNT(*) as count\nFROM products GROUP BY location`)">&#127759; By Location</button>
+      <button class="btn-action" onclick="setQuery(`SELECT * FROM products\nWHERE flyer_date = (\n  SELECT MAX(flyer_date) FROM products\n)`)">&#128197; Latest Flyer</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <!-- QUERY EDITOR -->
+    <div class="query-area">
+      <div class="query-header">
+        <span class="query-label">&#9655; SQL Query</span>
+        <div class="query-actions">
+          <button class="btn-snippet" onclick="setQuery('SELECT * FROM products ORDER BY flyer_date DESC LIMIT 50')">SELECT *</button>
+          <button class="btn-snippet" onclick="setQuery(`SELECT flyer, product_name, upc, link\nFROM products\nWHERE product_name LIKE '%chicken%'`)">LIKE search</button>
+          <button class="btn-snippet" onclick="setQuery(`UPDATE products\nSET link = 'https://www.sedanos.com/...'\nWHERE upc = '123456-00000'`)">UPDATE</button>
+          <button class="btn-run" onclick="runQuery()">&#9654; Run</button>
+        </div>
+      </div>
+      <textarea id="queryInput" spellcheck="false">SELECT * FROM products ORDER BY flyer_date DESC LIMIT 50</textarea>
+    </div>
+
+    <!-- QUICK SEARCH -->
+    <div class="quick-search">
+      <span class="qs-label">Quick Search:</span>
+      <input type="text" id="quickSearch" placeholder="Product name or UPC..." oninput="quickSearchFn(this.value)">
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-wrap" id="resultsWrap">
+      <div style="padding:40px;text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;">
+        Load your database file to begin.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let db = null;
+let SQL = null;
+let lastResults = [];
+
+// Init sql.js
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` }).then(S => {
+  SQL = S;
+});
+
+function loadDB(input) {
+  const file = input.files[0];
+  if (!file || !SQL) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const arr = new Uint8Array(e.target.result);
+      db = new SQL.Database(arr);
+      document.getElementById('loadScreen').classList.add('hidden');
+      document.getElementById('dbStatus').textContent = file.name;
+      document.getElementById('dbStatus').classList.add('loaded');
+      updateStats();
+      runQuery();
+    } catch(err) {
+      alert('Error loading database: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function runQuery() {
+  if (!db) return;
+  const sql = document.getElementById('queryInput').value.trim();
+  if (!sql) return;
+  const wrap = document.getElementById('resultsWrap');
+  try {
+    const results = db.exec(sql);
+    if (!results.length) {
+      // Write query (UPDATE/INSERT/DELETE)
+      wrap.innerHTML = `<div style="padding:20px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);">&#10003; Query executed successfully. Rows affected: ${db.getRowsModified()}</div>`;
+      updateStats();
+      return;
+    }
+    const { columns, values } = results[0];
+    lastResults = values.map(v => Object.fromEntries(columns.map((c,i) => [c, v[i]])));
+    renderResults(columns, values);
+  } catch(err) {
+    wrap.innerHTML = `<div class="error-msg">&#9888; ${err.message}</div>`;
+  }
+}
+
+function renderResults(columns, values) {
+  const wrap = document.getElementById('resultsWrap');
+  const isProductTable = columns.includes('product_name') && columns.includes('upc');
+
+  let html = `<div class="results-info">
+    <span><span class="results-count">${values.length}</span> rows returned</span>
+    <button class="export-btn" onclick="exportCSV()">&#8595; Export CSV</button>
+  </div>`;
+
+  html += `<table class="results"><thead><tr>`;
+  columns.forEach(c => { html += `<th>${c}</th>`; });
+  html += `</tr></thead><tbody>`;
+
+  values.forEach(row => {
+    html += '<tr>';
+    columns.forEach((col, i) => {
+      const val = row[i];
+      if (col === 'id') {
+        html += `<td class="td-id">${val ?? ''}</td>`;
+      } else if (col === 'upc') {
+        html += `<td class="td-upc">${val ?? ''}</td>`;
+      } else if (col === 'location') {
+        const loc = (val || '').toUpperCase();
+        const cls = loc === 'MIAMI' ? 'loc-miami' : loc === 'ORLANDO' ? 'loc-orlando' : 'loc-all';
+        html += `<td><span class="loc-badge ${cls}">${loc || '—'}</span></td>`;
+      } else if (col === 'link') {
+        html += val
+          ? `<td class="link-cell"><a href="${val}" target="_blank" rel="noopener">Open ↗</a></td>`
+          : `<td><span class="no-link">—</span></td>`;
+      } else {
+        html += `<td title="${val ?? ''}">${val ?? ''}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function quickSearchFn(q) {
+  if (!db) return;
+  if (!q.trim()) {
+    setQuery('SELECT * FROM products ORDER BY flyer_date DESC LIMIT 50');
+    runQuery();
+    return;
+  }
+  const safe = q.replace(/'/g, "''");
+  setQuery(`SELECT * FROM products\nWHERE product_name LIKE '%${safe}%'\n   OR upc LIKE '%${safe}%'\nORDER BY flyer_date DESC`);
+  runQuery();
+}
+
+function updateStats() {
+  if (!db) return;
+  try {
+    const total = db.exec('SELECT COUNT(*) FROM products')[0].values[0][0];
+    const flyers = db.exec('SELECT COUNT(DISTINCT flyer) FROM products')[0].values[0][0];
+    const noLink = db.exec("SELECT COUNT(*) FROM products WHERE link = '' OR link IS NULL")[0].values[0][0];
+    const locs = db.exec('SELECT COUNT(DISTINCT location) FROM products')[0].values[0][0];
+    const grid = document.getElementById('statsGrid');
+    grid.innerHTML = `
+      <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-box"><div class="stat-num">${flyers}</div><div class="stat-lbl">Flyers</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--red)">${noLink}</div><div class="stat-lbl">No Link</div></div>
+      <div class="stat-box"><div class="stat-num">${locs}</div><div class="stat-lbl">Locations</div></div>`;
+  } catch(e) {}
+}
+
+function setQuery(q) {
+  document.getElementById('queryInput').value = q;
+}
+
+function selectTable(t) {
+  setQuery(`SELECT * FROM ${t} ORDER BY flyer_date DESC LIMIT 50`);
+  runQuery();
+}
+
+function exportDB() {
+  if (!db) return;
+  const data = db.export();
+  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'flyer_products.db';
+  a.click();
+}
+
+function exportCSV() {
+  if (!lastResults.length) return;
+  const cols = Object.keys(lastResults[0]);
+  const rows = [cols.join(','), ...lastResults.map(r => cols.map(c => `"${(r[c]||'').toString().replace(/"/g,'""')}"`).join(','))];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'query_results.csv';
+  a.click();
+}
+
+// Ctrl+Enter to run query
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runQuery();
+});
+</script>
+</body>
+</html>
